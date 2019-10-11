@@ -76,12 +76,7 @@ class MAML_Regression:
             with torch.no_grad():
                 fast_weights = {key: fast_weights[key] - self.learning_rate_alpha * gradients[key] for key in
                                 fast_weights}
-            print('training loss', i, loss2.data)
-        # for key in self.weights:
-        #     self.weights[key] = self.weights[key] - self.learning_rate_beta * gradients[key]
-        # predict_final = self.forward(self.weights, input_datas)
-        # loss_final = loss_mse(predict_final, targets)
-        # print('loss final', loss_final.data)
+            print('training loss', i, loss2)
         return fast_weights
 
     def meta_training_alpha(self, tasks_input, tasks_target):
@@ -102,6 +97,17 @@ class MAML_Regression:
             task_gradients = {key: task_weights[key].grad for key in task_weights}
             for key in total_gradients:
                 total_gradients[key] = total_gradients[key] + task_gradients[key]
+            with torch.no_grad():
+                x = task_input.data.numpy()
+                y_true = task_target.data.numpy()
+                y_pred = [x.data.numpy() for x in task_predict]
+                plt.subplot(4, 1, 1)
+                plt.cla()
+                plt.scatter(x, y_true, marker='.', c='b')
+                plt.legend('true value')
+                plt.scatter(x, y_pred, marker='.', c='r')
+                plt.legend('predict value')
+                plt.pause(1)
 
         with torch.no_grad():
             pred_before = self.forward(self.weights, tasks_input[0])
@@ -111,6 +117,7 @@ class MAML_Regression:
             pred_after = self.forward(self.weights, tasks_input[0])
             loss_after = loss_mse(pred_after, tasks_target[0])
             print('loss before', loss_before, 'loss after', loss_after)
+
 
     def meta_testing_beta(self, new_task_inputs, new_task_targets):
         for new_input, new_target in zip(new_task_inputs, new_task_targets):
@@ -139,7 +146,7 @@ class MAML_Regression:
                 final_loss = loss_mse(final_pred, meta_test_target)
                 print('final loss', final_loss)
 
-    def baseline(self, train_inputs, train_targets, test_inputs, test_targets):
+    def baseline(self, train_inputs, train_targets, new_task_inputs, new_task_targets, test_inputs, test_targets):
         for train_input, train_target in zip(train_inputs, train_targets):
             for i in range(self.num_update):
                 self.baseline_weights = {key: self.baseline_weights[key].requires_grad_(True) for key in
@@ -155,10 +162,60 @@ class MAML_Regression:
                 with torch.no_grad():
                     self.baseline_weights = {key: self.baseline_weights[key] - self.learning_rate_alpha *
                                                   self.baseline_weights[key].grad for key in self.baseline_weights}
-                print('baseline loss', baseline_train_loss)
+                    print(i, 'baseline train loss', baseline_train_loss)
+                    x = train_input.data.numpy()
+                    y_true = train_target.data.numpy()
+                    y_pred  = [x.data.numpy() for x in baseline_train_pred]
+                    plt.subplot(3, 1, 1)
+                    plt.cla()
+                    plt.scatter(x, y_true, marker='.', c='b')
+                    plt.legend('true value')
+                    plt.scatter(x, y_pred, marker='.', c='r')
+                    plt.legend('predict value')
+                    plt.pause(1)
 
+        for new_task_input, new_task_target in zip(new_task_inputs, new_task_targets):
+            self.baseline_weights = {key: self.baseline_weights[key].requires_grad_(True) for key in
+                                     self.baseline_weights}
+            try:
+                self.baseline_weights = {key: self.baseline_weights[key].grad.data.zero_() for key in
+                                         self.baseline_weights}
+            except:
+                pass
+            baseline_train_pred = self.forward(self.baseline_weights, new_task_input)
+            baseline_train_loss = loss_mse(new_task_target, baseline_train_pred)
+            baseline_train_loss.backward()
+            with torch.no_grad():
+                self.baseline_weights = {key: self.baseline_weights[key] - self.learning_rate_beta *
+                                              self.baseline_weights[key].grad for key in self.baseline_weights}
+                print('baseline new task train loss', baseline_train_loss)
+                x = new_task_input.data.numpy()
+                y_true = new_task_target.data.numpy()
+                y_pred = [x.data.numpy() for x in baseline_train_pred]
+                plt.subplot(3, 1, 2)
+                plt.cla()
+                plt.scatter(x, y_true, marker='.', c='b')
+                plt.legend('true value')
+                plt.scatter(x, y_pred, marker='.', c='r')
+                plt.legend('predict value')
+                plt.pause(1)
 
-
+        for test_input, test_target in zip(test_inputs, test_targets):
+            baseline_test_pred = self.forward(self.baseline_weights, test_input)
+            baseline_test_loss = loss_mse(test_target, baseline_test_pred)
+            print('baseline test loss', baseline_test_loss)
+            with torch.no_grad():
+                x = test_input.data.numpy()
+                y_true = test_target.data.numpy()
+                y_pred = [x.data.numpy() for x in baseline_test_pred]
+                plt.subplot(3, 1, 3)
+                plt.cla()
+                plt.scatter(x, y_true, marker='.', c='b')
+                plt.legend('true value')
+                plt.scatter(x, y_pred, marker='.', c='r')
+                plt.legend('predict value')
+                plt.pause(0)
+        plt.show()
 
 train_task_x, train_task_y, train_amplitude, train_phases = sample_data(5, 100)
 test_x, test_y, test_amp, test_pha = sample_data(1, 10)
@@ -169,8 +226,12 @@ meta_test_x, meta_test_y = torch.tensor(meta_test_x, dtype=torch.float32), torch
                                                                                         dtype=torch.float32)
 
 plt.ion()
-plt.figure()
+
 maml = MAML_Regression()
+plt.figure()
 maml.meta_training_alpha(train_x, train_y)
 maml.meta_testing_beta(test_x, test_y)
 maml.final_test(meta_test_x, meta_test_y)
+
+plt.figure()
+maml.baseline(train_x, train_y, test_x, test_y, meta_test_x, meta_test_y)
