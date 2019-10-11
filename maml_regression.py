@@ -101,12 +101,12 @@ class MAML_Regression:
                 x = task_input.data.numpy()
                 y_true = task_target.data.numpy()
                 y_pred = [x.data.numpy() for x in task_predict]
-                plt.subplot(4, 1, 1)
+                ax1 = plt.subplot(4, 1, 1)
                 plt.cla()
-                plt.scatter(x, y_true, marker='.', c='b')
-                plt.legend('true value')
-                plt.scatter(x, y_pred, marker='.', c='r')
-                plt.legend('predict value')
+                ax1.set_title('meta training alpha')
+                l1 = plt.scatter(x, y_true, marker='.', c='b')
+                l2 = plt.scatter(x, y_pred, marker='.', c='r')
+                plt.legend((l1, l2), ("true", "predict"))
                 plt.pause(1)
 
         with torch.no_grad():
@@ -117,7 +117,18 @@ class MAML_Regression:
             pred_after = self.forward(self.weights, tasks_input[0])
             loss_after = loss_mse(pred_after, tasks_target[0])
             print('loss before', loss_before, 'loss after', loss_after)
-
+            x = tasks_input[0].data.numpy()
+            y_true = tasks_target[0].data.numpy()
+            y_pred_before = [x.data.numpy() for x in pred_before]
+            y_pred_after = [x.data.numpy() for x in pred_after]
+            ax1 = plt.subplot(4, 1, 2)
+            plt.cla()
+            ax1.set_title('meta training beta')
+            l1 = plt.scatter(x, y_true, marker='.', c='b')
+            l2 = plt.scatter(x, y_pred_before, marker='.', c='g')
+            l3 = plt.scatter(x, y_pred_after, marker='.', c='r')
+            plt.legend((l1, l2, l3), ("true", "before update", "after beta update"))
+            plt.pause(1)
 
     def meta_testing_beta(self, new_task_inputs, new_task_targets):
         for new_input, new_target in zip(new_task_inputs, new_task_targets):
@@ -138,6 +149,16 @@ class MAML_Regression:
                 new_task_predict = self.forward(self.weights, new_input)
                 loss_after_training = loss_mse(new_task_predict, new_target)
                 print("loss before training =", new_task_loss, ", loss after training =", loss_after_training)
+                x = new_input.data.numpy()
+                y_true = new_target.data.numpy()
+                y_pred = [x.data.numpy() for x in new_task_predict]
+                ax1 = plt.subplot(4, 1, 3)
+                plt.cla()
+                ax1.set_title('new task training')
+                l1 = plt.scatter(x, y_true, marker='.', c='b')
+                l2 = plt.scatter(x, y_pred, marker='.', c='r')
+                plt.legend((l1, l2), ("true", "predict"))
+                plt.pause(1)
 
     def final_test(self, meta_test_inputs, meta_test_targets):
         for meta_test_input, meta_test_target in zip(meta_test_inputs, meta_test_targets):
@@ -145,6 +166,16 @@ class MAML_Regression:
                 final_pred = self.forward(self.weights, meta_test_input)
                 final_loss = loss_mse(final_pred, meta_test_target)
                 print('final loss', final_loss)
+                x = meta_test_input.data.numpy()
+                y_true = meta_test_target.data.numpy()
+                y_pred = [x.data.numpy() for x in final_pred]
+                ax1 = plt.subplot(4, 1, 4)
+                plt.cla()
+                ax1.set_title('new task test')
+                l1 = plt.scatter(x, y_true, marker='.', c='b')
+                l2 = plt.scatter(x, y_pred, marker='.', c='r')
+                plt.legend((l1, l2), ("true", "predict"))
+                plt.pause(1)
 
     def baseline(self, train_inputs, train_targets, new_task_inputs, new_task_targets, test_inputs, test_targets):
         for train_input, train_target in zip(train_inputs, train_targets):
@@ -168,10 +199,9 @@ class MAML_Regression:
                     y_pred  = [x.data.numpy() for x in baseline_train_pred]
                     plt.subplot(3, 1, 1)
                     plt.cla()
-                    plt.scatter(x, y_true, marker='.', c='b')
-                    plt.legend('true value')
-                    plt.scatter(x, y_pred, marker='.', c='r')
-                    plt.legend('predict value')
+                    l1 = plt.scatter(x, y_true, marker='.', c='b')
+                    l2 = plt.scatter(x, y_pred, marker='.', c='r')
+                    plt.legend((l1, l2), ("true", "predict"))
                     plt.pause(1)
 
         for new_task_input, new_task_target in zip(new_task_inputs, new_task_targets):
@@ -194,10 +224,9 @@ class MAML_Regression:
                 y_pred = [x.data.numpy() for x in baseline_train_pred]
                 plt.subplot(3, 1, 2)
                 plt.cla()
-                plt.scatter(x, y_true, marker='.', c='b')
-                plt.legend('true value')
-                plt.scatter(x, y_pred, marker='.', c='r')
-                plt.legend('predict value')
+                l1 = plt.scatter(x, y_true, marker='.', c='b')
+                l2 = plt.scatter(x, y_pred, marker='.', c='r')
+                plt.legend((l1, l2), ("true", "predict"))
                 plt.pause(1)
 
         for test_input, test_target in zip(test_inputs, test_targets):
@@ -210,12 +239,12 @@ class MAML_Regression:
                 y_pred = [x.data.numpy() for x in baseline_test_pred]
                 plt.subplot(3, 1, 3)
                 plt.cla()
-                plt.scatter(x, y_true, marker='.', c='b')
-                plt.legend('true value')
-                plt.scatter(x, y_pred, marker='.', c='r')
-                plt.legend('predict value')
+                l1 = plt.scatter(x, y_true, marker='.', c='b')
+                l2 = plt.scatter(x, y_pred, marker='.', c='r')
+                plt.legend((l1, l2), ("true", "predict"))
                 plt.pause(0)
         plt.show()
+
 
 train_task_x, train_task_y, train_amplitude, train_phases = sample_data(5, 100)
 test_x, test_y, test_amp, test_pha = sample_data(1, 10)
@@ -228,6 +257,7 @@ meta_test_x, meta_test_y = torch.tensor(meta_test_x, dtype=torch.float32), torch
 plt.ion()
 
 maml = MAML_Regression()
+
 plt.figure()
 maml.meta_training_alpha(train_x, train_y)
 maml.meta_testing_beta(test_x, test_y)
