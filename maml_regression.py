@@ -51,9 +51,9 @@ class MAML_Regression:
                         'w2': torch.randn(40, 40, requires_grad=True), 'b2': torch.randn(1, 40, requires_grad=True),
                         'w3': torch.randn(40, 1, requires_grad=True), 'b3': torch.randn(1, 1, requires_grad=True)}
         self.num_update_alpha = 100
-        self.num_update_beta = 5
+        self.num_update_beta = 10
         self.learning_rate_alpha = 0.0001
-        self.learning_rate_beta = 0.0001
+        self.learning_rate_beta = 0.0002
         self.meta_batch_size = 10
         self.t = 0
         self.beta1 = 0.9
@@ -171,6 +171,23 @@ class MAML_Regression:
 
     def meta_testing(self, new_task_inputs, new_task_targets, new_task_test_inputs, new_task_test_targets):
         test_weights = {key: self.weights[key].clone().detach() for key in self.weights}
+        for meta_test_input, meta_test_target in zip(new_task_test_inputs, new_task_test_targets):
+            with torch.no_grad():
+                final_pred = self.forward(test_weights, meta_test_input)
+                final_loss = loss_mse(final_pred, meta_test_target)
+                print("new task test loss", final_loss)
+                if self.plot_figure:
+                    x = meta_test_input.data.numpy()
+                    y_true = meta_test_target.data.numpy()
+                    y_pred = [x.data.numpy() for x in final_pred]
+                    ax1 = plt.subplot(4, 1, 2)
+                    plt.cla()
+                    ax1.set_title('new task test')
+                    l1 = plt.scatter(x, y_true, marker='.', c='b')
+                    l2 = plt.scatter(x, y_pred, marker='.', c='r')
+                    plt.legend((l1, l2), ("true", "predict"))
+                    plt.pause(1)
+
         for new_input, new_target in zip(new_task_inputs, new_task_targets):
             for i in range(self.num_update_beta):
                 test_weights = {key: test_weights[key].requires_grad_(True) for key in test_weights}
@@ -312,7 +329,7 @@ if __name__ == '__main__':
             dtype=torch.float32)
         maml.meta_testing(new_task_x, new_task_y, new_task_test_x, new_task_test_y)
         maml.plot_figure = False
-        if itr % 500 == 499:
+        if itr % 500 == 498:
             maml.plot_figure = True
             with open('log/itr%d.pkl' % itr, 'wb') as f:
                 pickle.dump(maml, f)
