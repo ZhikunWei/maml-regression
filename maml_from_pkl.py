@@ -6,7 +6,7 @@ from maml_regression import sample_data
 import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
-    with open('log/itr2999.pkl', 'rb') as f:
+    with open('log/itr2998.pkl', 'rb') as f:
         maml = pickle.load(f)
     maml.plot_figure = True
     new_task_x, new_task_y, test_amp, test_pha = sample_data(1, 10)
