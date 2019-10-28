@@ -66,8 +66,15 @@ for epoch in range(300):
         optimizer.zero_grad()
         y_pred = maml_net(inputs)
         loss = loss_fn(y_pred, labels)
-        print(y_pred)
+        # print(y_pred)
         loss.backward()
+
+        print([], maml_net.linear1.weight.data, maml_net.linear1.bias.data)
+        print(maml_net.linear1.weight.grad, maml_net.linear1.bias.grad)
+        maml_net.linear1.weight.data = maml_net.linear1.weight.data - 0.01 * maml_net.linear1.weight.grad
+        print(maml_net.linear1.weight.data, maml_net.linear1.bias.data)
+        print(maml_net.linear1.weight.grad, maml_net.linear1.bias.grad)
+
         optimizer.step()
         running_loss += loss.item()
 
@@ -81,13 +88,14 @@ for epoch in range(300):
             y = torch.tensor(y, dtype=torch.float32, device=device)
             output = maml_net(x)
             # print(x, x.item())
+
             test_x.append(x.item())
             y_true.append(y.item())
             y_pred.append(output.item())
         ax1 = plt.subplot(2, 1, 1)
         plt.cla()
-        plt.scatter(test_x, y_true)
-        plt.scatter(test_x, y_pred)
+        plt.scatter(test_x, y_true, marker='.')
+        plt.scatter(test_x, y_pred, marker='.')
         # plt.pause(0.1)
 
         test_x = []
@@ -104,8 +112,8 @@ for epoch in range(300):
             y_pred.append(output.item())
         ax2 = plt.subplot(2, 1, 2)
         plt.cla()
-        plt.scatter(test_x, y_true)
-        plt.scatter(test_x, y_pred)
+        plt.scatter(test_x, y_true, marker='.')
+        plt.scatter(test_x, y_pred, marker='.')
 
         plt.pause(0.1)
 
